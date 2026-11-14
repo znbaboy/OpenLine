@@ -18,6 +18,11 @@ Drag a wire from an input to a mix, set each input's level per mix, and press th
 
 Download a zip from Releases (or the Actions artifacts), unzip anywhere, run `OpenLine.exe`. Needs Windows 10 version 2004 or later (app and desktop capture use per-process loopback). x64 and ARM64 builds.
 
+## Screenshot
+
+<img width="1491" height="845" alt="image" src="https://github.com/user-attachments/assets/89f69aba-20f3-495b-bbe0-81ff88d2b040" />
+
+
 ## Build
 
 Windows with the .NET 10 SDK:
