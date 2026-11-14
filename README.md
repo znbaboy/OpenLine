@@ -20,8 +20,7 @@ Download a zip from Releases (or the Actions artifacts), unzip anywhere, run `Op
 
 ## Screenshot
 
-<img width="1491" height="845" alt="image" src="https://github.com/user-attachments/assets/89f69aba-20f3-495b-bbe0-81ff88d2b040" />
-
+<img width="1498" height="934" alt="image" src="https://github.com/user-attachments/assets/12a262c4-b23f-4ae5-a966-e6b626571a85" />
 
 ## Build
 
