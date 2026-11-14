@@ -1,0 +1,357 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Page
+    x:Class="OpenLine.MainPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:OpenLine"
+    xmlns:controls="using:OpenLine.Controls"
+    xmlns:vm="using:OpenLine.Core.ViewModels"
+    Background="Transparent">
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="48" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <!-- Title bar: drag region -->
+        <Grid x:Name="AppTitleBar" Grid.Row="0" Background="Transparent" Padding="16,0,0,0">
+            <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+                <Image Source="/Assets/AppIcon.png" Width="16" Height="16" />
+                <TextBlock Text="OpenLine" Style="{StaticResource CaptionTextBlockStyle}" VerticalAlignment="Center" />
+            </StackPanel>
+        </Grid>
+
+        <!-- Banners -->
+        <StackPanel Grid.Row="1" Padding="24,0,24,8" Spacing="8">
+            <InfoBar Severity="Informational"
+                     IsOpen="{x:Bind ViewModel.ShowVbMissing, Mode=TwoWay}"
+                     Title="{x:Bind ViewModel.VbMissingTitle, Mode=OneWay}"
+                     Message="{x:Bind ViewModel.VbMissingMessage, Mode=OneWay}">
+                <InfoBar.ActionButton>
+                    <Button Content="{x:Bind ViewModel.VbMissingAction, Mode=OneWay}" Click="VbBannerAction_Click" />
+                </InfoBar.ActionButton>
+            </InfoBar>
+
+            <InfoBar Severity="Informational" IsClosable="False"
+                     IsOpen="{x:Bind ViewModel.ShowVbBusy, Mode=OneWay}"
+                     Title="Installing VB-Cable"
+                     Message="{x:Bind ViewModel.VbBusyText, Mode=OneWay}">
+                <InfoBar.Content>
+                    <ProgressBar Maximum="100" Margin="0,0,0,12"
+                                 Value="{x:Bind ViewModel.VbProgress, Mode=OneWay}"
+                                 IsIndeterminate="{x:Bind ViewModel.VbIndeterminate, Mode=OneWay}" />
+                </InfoBar.Content>
+            </InfoBar>
+
+            <InfoBar Severity="Success"
+                     IsOpen="{x:Bind ViewModel.ShowVbRestart, Mode=TwoWay}"
+                     Title="Restart Windows to finish installing VB-Cable"
+                     Message="CABLE Input shows up as an output after the restart.">
+                <InfoBar.ActionButton>
+                    <Button Content="Restart now" Click="RestartWindows_Click" />
+                </InfoBar.ActionButton>
+            </InfoBar>
+
+            <InfoBar Severity="Error"
+                     IsOpen="{x:Bind ViewModel.HasError, Mode=TwoWay}"
+                     Message="{x:Bind ViewModel.ErrorMessage, Mode=OneWay}" />
+        </StackPanel>
+
+        <!-- Column headers -->
+        <Grid Grid.Row="2" Padding="24,4,24,12">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="340" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="380" />
+            </Grid.ColumnDefinitions>
+
+            <Grid Grid.Column="0" Margin="0,0,14,0">
+                <TextBlock Text="Inputs" Style="{StaticResource SubtitleTextBlockStyle}" VerticalAlignment="Center" />
+                <Button HorizontalAlignment="Right" Click="AddInput_Click">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <FontIcon Glyph="&#xE710;" FontSize="14" />
+                        <TextBlock Text="Add input" />
+                    </StackPanel>
+                </Button>
+            </Grid>
+
+            <Grid Grid.Column="2" Margin="14,0,0,0">
+                <TextBlock Text="Mixes" Style="{StaticResource SubtitleTextBlockStyle}" VerticalAlignment="Center" />
+                <StackPanel Orientation="Horizontal" Spacing="4" HorizontalAlignment="Right">
+                    <Button Click="AddMix_Click">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <FontIcon Glyph="&#xE710;" FontSize="14" />
+                            <TextBlock Text="Add mix" />
+                        </StackPanel>
+                    </Button>
+                    <Button Style="{StaticResource IconButtonStyle}" ToolTipService.ToolTip="Settings" AutomationProperties.Name="Settings">
+                        <FontIcon Glyph="&#xE713;" FontSize="16" />
+                        <Button.Flyout>
+                            <Flyout Placement="BottomEdgeAlignedRight">
+                                <StackPanel Width="340" Spacing="16">
+                                    <TextBlock Text="Settings" Style="{StaticResource SubtitleTextBlockStyle}" />
+                                    <ComboBox Header="Listen plays on" HorizontalAlignment="Stretch"
+                                              ItemsSource="{x:Bind ViewModel.OutputDevices}"
+                                              SelectedItem="{x:Bind ViewModel.MonitorDevice, Mode=TwoWay}" />
+                                    <ToggleSwitch Header="Keep running in the notification area when closed"
+                                                  IsOn="{x:Bind ViewModel.CloseToTray, Mode=TwoWay}" />
+                                    <ToggleSwitch Header="Start with Windows"
+                                                  IsOn="{x:Bind ViewModel.StartWithWindows, Mode=TwoWay}" />
+                                    <StackPanel Spacing="8">
+                                        <TextBlock Text="VB-Cable" Style="{StaticResource BodyStrongTextBlockStyle}" />
+                                        <TextBlock Text="{x:Bind ViewModel.VbStatusText, Mode=OneWay}" Style="{StaticResource SecondaryCaptionStyle}" TextWrapping="Wrap" />
+                                        <Button Content="{x:Bind ViewModel.VbButtonText, Mode=OneWay}"
+                                                IsEnabled="{x:Bind ViewModel.CanInstallVb, Mode=OneWay}"
+                                                Click="InstallVbCable_Click" />
+                                        <HyperlinkButton Padding="0" Content="VB-Cable is donationware. Support VB-Audio"
+                                                         NavigateUri="https://shop.vb-audio.com/en/win-apps/11-vb-cable.html" />
+                                    </StackPanel>
+                                    <TextBlock Text="{x:Bind AboutText}" Style="{StaticResource SecondaryCaptionStyle}" TextWrapping="Wrap" />
+                                </StackPanel>
+                            </Flyout>
+                        </Button.Flyout>
+                    </Button>
+                </StackPanel>
+            </Grid>
+        </Grid>
+
+        <!-- Routing surface -->
+        <Grid x:Name="Body" Grid.Row="3" Margin="24,0,24,0" SizeChanged="Body_SizeChanged">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="340" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="380" />
+            </Grid.ColumnDefinitions>
+
+            <Canvas x:Name="WireCanvas" Grid.ColumnSpan="3" />
+
+            <ScrollViewer Grid.Column="0" VerticalScrollBarVisibility="Auto">
+                <StackPanel Padding="0,0,0,24">
+                    <ItemsControl ItemsSource="{x:Bind ViewModel.Inputs}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="vm:InputViewModel">
+                                <Grid Margin="0,0,0,12">
+                                    <Border Margin="0,0,14,0" Padding="16,14,16,14" Style="{StaticResource CardStyle}">
+                                        <StackPanel Spacing="10">
+                                            <Grid ColumnSpacing="12">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="Auto" />
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                </Grid.ColumnDefinitions>
+                                                <Border Width="36" Height="36" CornerRadius="6" Background="{x:Bind local:Ui.SoftBrush(ColorHex)}">
+                                                    <FontIcon Glyph="{x:Bind Glyph, Mode=OneWay}" FontSize="16" Foreground="{x:Bind local:Ui.Brush(ColorHex)}" />
+                                                </Border>
+                                                <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                                    <TextBlock Text="{x:Bind Name, Mode=OneWay}" Style="{StaticResource BodyStrongTextBlockStyle}" TextTrimming="CharacterEllipsis" />
+                                                    <TextBlock Text="{x:Bind SourceLabel, Mode=OneWay}" Style="{StaticResource SecondaryCaptionStyle}" TextTrimming="CharacterEllipsis" />
+                                                </StackPanel>
+                                                <ToggleButton Grid.Column="2" Style="{StaticResource IconToggleStyle}"
+                                                              IsChecked="{x:Bind Muted, Mode=TwoWay}"
+                                                              ToolTipService.ToolTip="Mute" AutomationProperties.Name="Mute input">
+                                                    <FontIcon Glyph="{x:Bind MuteGlyph, Mode=OneWay}" FontSize="14" />
+                                                </ToggleButton>
+                                                <Button Grid.Column="3" Style="{StaticResource IconButtonStyle}"
+                                                        ToolTipService.ToolTip="More" AutomationProperties.Name="More input options">
+                                                    <FontIcon Glyph="&#xE712;" FontSize="14" />
+                                                    <Button.Flyout>
+                                                        <MenuFlyout Placement="BottomEdgeAlignedRight">
+                                                            <MenuFlyoutItem Text="Rename" Click="{x:Bind RequestRename}" />
+                                                            <MenuFlyoutItem Text="Change source" Click="{x:Bind RequestEdit}" />
+                                                            <MenuFlyoutSeparator />
+                                                            <MenuFlyoutItem Text="Remove" Click="{x:Bind Remove}" />
+                                                        </MenuFlyout>
+                                                    </Button.Flyout>
+                                                </Button>
+                                            </Grid>
+                                            <Grid ColumnSpacing="8">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="44" />
+                                                </Grid.ColumnDefinitions>
+                                                <Slider Minimum="0" Maximum="200" StepFrequency="1" VerticalAlignment="Center"
+                                                        Value="{x:Bind GainPercent, Mode=TwoWay}"
+                                                        AutomationProperties.Name="Input level" />
+                                                <TextBlock Grid.Column="1" Text="{x:Bind GainText, Mode=OneWay}" TextAlignment="Right"
+                                                           VerticalAlignment="Center" Style="{StaticResource SecondaryCaptionStyle}" />
+                                            </Grid>
+                                            <controls:LevelMeter Level="{x:Bind Level, Mode=OneWay}"
+                                                                 BarBrush="{x:Bind local:Ui.Brush(ColorHex)}"
+                                                                 TrackBrush="{ThemeResource ControlStrongFillColorDisabledBrush}" />
+                                            <TextBlock Text="{x:Bind Status, Mode=OneWay}" Visibility="{x:Bind HasStatus, Mode=OneWay}"
+                                                       Style="{StaticResource CaptionTextBlockStyle}" TextWrapping="Wrap"
+                                                       Foreground="{ThemeResource SystemFillColorCautionBrush}" />
+                                        </StackPanel>
+                                    </Border>
+                                    <!-- Output port: drag from here onto a mix -->
+                                    <Grid Width="28" Height="28" Margin="0,18,0,0" HorizontalAlignment="Right" VerticalAlignment="Top"
+                                          Background="Transparent" ToolTipService.ToolTip="Drag onto a mix"
+                                          Loaded="InputPort_Loaded" Unloaded="InputPort_Unloaded"
+                                          PointerPressed="InputPort_PointerPressed" PointerMoved="InputPort_PointerMoved"
+                                          PointerReleased="InputPort_PointerReleased" PointerCaptureLost="InputPort_PointerCaptureLost">
+                                        <Ellipse Width="16" Height="16" StrokeThickness="3"
+                                                 Fill="{x:Bind local:Ui.Brush(ColorHex)}"
+                                                 Stroke="{ThemeResource SolidBackgroundFillColorBaseBrush}" />
+                                    </Grid>
+                                </Grid>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    <TextBlock Visibility="{x:Bind ViewModel.HasNoInputs, Mode=OneWay}" Margin="0,8,14,0" TextWrapping="Wrap"
+                               Style="{StaticResource SecondaryCaptionStyle}"
+                               Text="Add a microphone, an app, or your desktop audio to start mixing." />
+                </StackPanel>
+            </ScrollViewer>
+
+            <ScrollViewer Grid.Column="2" VerticalScrollBarVisibility="Auto">
+                <StackPanel Padding="0,0,0,24">
+                    <ItemsControl ItemsSource="{x:Bind ViewModel.Mixes}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="vm:MixViewModel">
+                                <Grid Margin="0,0,0,12">
+                                    <Border Margin="14,0,0,0" Padding="16" Style="{StaticResource CardStyle}"
+                                            Loaded="MixCard_Loaded" Unloaded="MixCard_Unloaded">
+                                        <StackPanel Spacing="12">
+                                            <Grid ColumnSpacing="8">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="Auto" />
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                </Grid.ColumnDefinitions>
+                                                <FontIcon Glyph="{x:Bind Glyph, Mode=OneWay}" FontSize="16" Margin="0,0,4,0"
+                                                          Foreground="{ThemeResource AccentFillColorDefaultBrush}" />
+                                                <TextBlock Grid.Column="1" Text="{x:Bind Name, Mode=OneWay}" VerticalAlignment="Center"
+                                                           Style="{StaticResource BodyStrongTextBlockStyle}" TextTrimming="CharacterEllipsis" />
+                                                <ToggleButton Grid.Column="2" Style="{StaticResource IconToggleStyle}"
+                                                              IsChecked="{x:Bind IsListening, Mode=TwoWay}"
+                                                              ToolTipService.ToolTip="Listen to this mix" AutomationProperties.Name="Listen to this mix">
+                                                    <FontIcon Glyph="&#xE7F6;" FontSize="14" />
+                                                </ToggleButton>
+                                                <ToggleButton Grid.Column="3" Style="{StaticResource IconToggleStyle}"
+                                                              IsChecked="{x:Bind Muted, Mode=TwoWay}"
+                                                              ToolTipService.ToolTip="Mute" AutomationProperties.Name="Mute mix">
+                                                    <FontIcon Glyph="{x:Bind MuteGlyph, Mode=OneWay}" FontSize="14" />
+                                                </ToggleButton>
+                                                <Button Grid.Column="4" Style="{StaticResource IconButtonStyle}"
+                                                        ToolTipService.ToolTip="More" AutomationProperties.Name="More mix options">
+                                                    <FontIcon Glyph="&#xE712;" FontSize="14" />
+                                                    <Button.Flyout>
+                                                        <MenuFlyout Placement="BottomEdgeAlignedRight">
+                                                            <MenuFlyoutItem Text="Rename" Click="{x:Bind RequestRename}" />
+                                                            <MenuFlyoutSeparator />
+                                                            <MenuFlyoutItem Text="Remove" Click="{x:Bind Remove}" />
+                                                        </MenuFlyout>
+                                                    </Button.Flyout>
+                                                </Button>
+                                            </Grid>
+
+                                            <ComboBox Header="Plays on" HorizontalAlignment="Stretch" PlaceholderText="Choose an output"
+                                                      ItemsSource="{x:Bind OutputDevices}"
+                                                      SelectedItem="{x:Bind SelectedDevice, Mode=TwoWay}" />
+                                            <TextBlock Text="{x:Bind Hint, Mode=OneWay}" Visibility="{x:Bind local:Ui.ShowIf(Hint), Mode=OneWay}"
+                                                       Style="{StaticResource SecondaryCaptionStyle}" TextWrapping="Wrap" />
+                                            <TextBlock Text="{x:Bind Status, Mode=OneWay}" Visibility="{x:Bind HasStatus, Mode=OneWay}"
+                                                       Style="{StaticResource CaptionTextBlockStyle}" TextWrapping="Wrap"
+                                                       Foreground="{ThemeResource SystemFillColorCautionBrush}" />
+
+                                            <Grid ColumnSpacing="8">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="44" />
+                                                </Grid.ColumnDefinitions>
+                                                <Slider Minimum="0" Maximum="100" StepFrequency="1" VerticalAlignment="Center"
+                                                        Value="{x:Bind VolumePercent, Mode=TwoWay}"
+                                                        AutomationProperties.Name="Mix volume" />
+                                                <TextBlock Grid.Column="1" Text="{x:Bind VolumeText, Mode=OneWay}" TextAlignment="Right"
+                                                           VerticalAlignment="Center" Style="{StaticResource SecondaryCaptionStyle}" />
+                                            </Grid>
+                                            <controls:LevelMeter Level="{x:Bind Level, Mode=OneWay}"
+                                                                 BarBrush="{ThemeResource AccentFillColorDefaultBrush}"
+                                                                 TrackBrush="{ThemeResource ControlStrongFillColorDisabledBrush}" />
+
+                                            <Grid ColumnSpacing="12">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                </Grid.ColumnDefinitions>
+                                                <StackPanel VerticalAlignment="Center">
+                                                    <TextBlock Text="Mono for voice chat" Style="{StaticResource BodyTextBlockStyle}" />
+                                                    <TextBlock Text="Turn on if music or effects go missing in browser or voice apps."
+                                                               Style="{StaticResource SecondaryCaptionStyle}" TextWrapping="Wrap" />
+                                                </StackPanel>
+                                                <ToggleSwitch Grid.Column="1" MinWidth="0" OnContent="" OffContent="" VerticalAlignment="Center"
+                                                              IsOn="{x:Bind MonoSafe, Mode=TwoWay}"
+                                                              AutomationProperties.Name="Mono for voice chat" />
+                                            </Grid>
+
+                                            <Rectangle Height="1" Margin="0,2,0,0" Fill="{ThemeResource DividerStrokeColorDefaultBrush}" />
+
+                                            <ItemsControl ItemsSource="{x:Bind Routes}">
+                                                <ItemsControl.ItemTemplate>
+                                                    <DataTemplate x:DataType="vm:RouteViewModel">
+                                                        <Grid ColumnSpacing="10" Height="36">
+                                                            <Grid.ColumnDefinitions>
+                                                                <ColumnDefinition Width="Auto" />
+                                                                <ColumnDefinition Width="96" />
+                                                                <ColumnDefinition Width="*" />
+                                                                <ColumnDefinition Width="40" />
+                                                                <ColumnDefinition Width="Auto" />
+                                                            </Grid.ColumnDefinitions>
+                                                            <Ellipse Width="8" Height="8" VerticalAlignment="Center" Fill="{x:Bind local:Ui.Brush(Input.ColorHex)}" />
+                                                            <TextBlock Grid.Column="1" Text="{x:Bind Input.Name, Mode=OneWay}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                                                            <Slider Grid.Column="2" Minimum="0" Maximum="150" StepFrequency="1" VerticalAlignment="Center"
+                                                                    Value="{x:Bind GainPercent, Mode=TwoWay}"
+                                                                    AutomationProperties.Name="Level in this mix" />
+                                                            <TextBlock Grid.Column="3" Text="{x:Bind GainText, Mode=OneWay}" TextAlignment="Right"
+                                                                       VerticalAlignment="Center" Style="{StaticResource SecondaryCaptionStyle}" />
+                                                            <Button Grid.Column="4" Style="{StaticResource IconButtonStyle}" Click="{x:Bind Remove}"
+                                                                    ToolTipService.ToolTip="Remove from this mix" AutomationProperties.Name="Remove from this mix">
+                                                                <FontIcon Glyph="&#xE711;" FontSize="12" />
+                                                            </Button>
+                                                        </Grid>
+                                                    </DataTemplate>
+                                                </ItemsControl.ItemTemplate>
+                                            </ItemsControl>
+
+                                            <TextBlock Visibility="{x:Bind HasNoRoutes, Mode=OneWay}" TextWrapping="Wrap"
+                                                       Style="{StaticResource SecondaryCaptionStyle}"
+                                                       Text="Nothing routed here yet. Drag an input's dot onto this card." />
+
+                                            <DropDownButton Content="Add input">
+                                                <DropDownButton.Flyout>
+                                                    <MenuFlyout Placement="BottomEdgeAlignedLeft" Opening="AddRouteMenu_Opening" />
+                                                </DropDownButton.Flyout>
+                                            </DropDownButton>
+                                        </StackPanel>
+                                    </Border>
+                                    <!-- Input port -->
+                                    <Grid Width="28" Height="28" Margin="0,18,0,0" HorizontalAlignment="Left" VerticalAlignment="Top"
+                                          Loaded="MixPort_Loaded" Unloaded="MixPort_Unloaded">
+                                        <Ellipse Width="16" Height="16" StrokeThickness="3"
+                                                 Fill="{ThemeResource AccentFillColorDefaultBrush}"
+                                                 Stroke="{ThemeResource SolidBackgroundFillColorBaseBrush}" />
+                                    </Grid>
+                                </Grid>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    <TextBlock Visibility="{x:Bind ViewModel.HasNoMixes, Mode=OneWay}" Margin="14,8,0,0" TextWrapping="Wrap"
+                               Style="{StaticResource SecondaryCaptionStyle}"
+                               Text="Add a mix to send audio to an app, a stream, or your headphones." />
+                </StackPanel>
+            </ScrollViewer>
+
+            <Canvas x:Name="DragCanvas" Grid.ColumnSpan="3" IsHitTestVisible="False" />
+        </Grid>
+
+        <TextBlock Grid.Row="4" Margin="24,8,24,16" Style="{StaticResource SecondaryCaptionStyle}"
+                   Text="Drag a colored dot onto a mix to route it. Click a wire to change its level or remove it." />
+    </Grid>
+</Page>
