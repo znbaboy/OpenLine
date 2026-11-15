@@ -19,9 +19,6 @@ public sealed class MixBus : ISampleProvider
     private float[] _scratch = new float[4096];
     private volatile float _volume = 1f;
     private volatile bool _muted;
-    private volatile bool _monoSafe;
-    private bool _monoActive; // render thread only
-    private readonly MonoSafeDownmix _mono = new();
     private float _appliedVolume;
     private PeakHolder _peak;
     private SampleRing? _monitorTap;
@@ -36,9 +33,6 @@ public sealed class MixBus : ISampleProvider
     public float Volume { get => _volume; set => _volume = value; }
 
     public bool Muted { get => _muted; set => _muted = value; }
-
-    /// <summary>Phase-rotated mono output for apps that turn a stereo mic into mono.</summary>
-    public bool MonoSafe { get => _monoSafe; set => _monoSafe = value; }
 
     public bool IsRunning => _player is not null;
 
@@ -136,14 +130,6 @@ public sealed class MixBus : ISampleProvider
             }
             slot.Applied = target;
         }
-
-        bool mono = _monoSafe;
-        if (mono != _monoActive)
-        {
-            _mono.Reset();
-            _monoActive = mono;
-        }
-        if (mono) _mono.Process(buffer[..len]);
 
         float mTarget = _muted ? 0f : _volume;
         float m = _appliedVolume;

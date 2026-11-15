@@ -336,12 +336,6 @@ public sealed partial class MainPage : Page
         else if (item is MixViewModel mix) mix.Name = name;
     }
 
-    private async void AddMix_Click(object sender, RoutedEventArgs e) => await ViewModel.AddMixAsync();
-
-    private async void InstallVbCable_Click(object sender, RoutedEventArgs e) => await ViewModel.InstallVbCableAsync();
-
-    private async void VbBannerAction_Click(object sender, RoutedEventArgs e) => await ViewModel.VbBannerActionAsync();
-
     private async void RestartWindows_Click(object sender, RoutedEventArgs e)
     {
         var confirm = new ContentDialog

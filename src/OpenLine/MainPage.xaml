@@ -6,6 +6,7 @@
     xmlns:local="using:OpenLine"
     xmlns:controls="using:OpenLine.Controls"
     xmlns:vm="using:OpenLine.Core.ViewModels"
+    xmlns:tk="using:CommunityToolkit.WinUI.Controls"
     Background="Transparent">
 
     <Grid>
@@ -32,7 +33,7 @@
                      Title="{x:Bind ViewModel.VbMissingTitle, Mode=OneWay}"
                      Message="{x:Bind ViewModel.VbMissingMessage, Mode=OneWay}">
                 <InfoBar.ActionButton>
-                    <Button Content="{x:Bind ViewModel.VbMissingAction, Mode=OneWay}" Click="VbBannerAction_Click" />
+                    <Button Content="{x:Bind ViewModel.VbMissingAction, Mode=OneWay}" Command="{x:Bind ViewModel.VbBannerActionCommand}" />
                 </InfoBar.ActionButton>
             </InfoBar>
 
@@ -82,7 +83,7 @@
             <Grid Grid.Column="2" Margin="14,0,0,0">
                 <TextBlock Text="Mixes" Style="{StaticResource SubtitleTextBlockStyle}" VerticalAlignment="Center" />
                 <StackPanel Orientation="Horizontal" Spacing="4" HorizontalAlignment="Right">
-                    <Button Click="AddMix_Click">
+                    <Button Command="{x:Bind ViewModel.AddMixCommand}">
                         <StackPanel Orientation="Horizontal" Spacing="8">
                             <FontIcon Glyph="&#xE710;" FontSize="14" />
                             <TextBlock Text="Add mix" />
@@ -92,25 +93,49 @@
                         <FontIcon Glyph="&#xE713;" FontSize="16" />
                         <Button.Flyout>
                             <Flyout Placement="BottomEdgeAlignedRight">
-                                <StackPanel Width="340" Spacing="16">
-                                    <TextBlock Text="Settings" Style="{StaticResource SubtitleTextBlockStyle}" />
-                                    <ComboBox Header="Listen plays on" HorizontalAlignment="Stretch"
-                                              ItemsSource="{x:Bind ViewModel.OutputDevices}"
-                                              SelectedItem="{x:Bind ViewModel.MonitorDevice, Mode=TwoWay}" />
-                                    <ToggleSwitch Header="Keep running in the notification area when closed"
-                                                  IsOn="{x:Bind ViewModel.CloseToTray, Mode=TwoWay}" />
-                                    <ToggleSwitch Header="Start with Windows"
-                                                  IsOn="{x:Bind ViewModel.StartWithWindows, Mode=TwoWay}" />
-                                    <StackPanel Spacing="8">
-                                        <TextBlock Text="VB-Cable" Style="{StaticResource BodyStrongTextBlockStyle}" />
-                                        <TextBlock Text="{x:Bind ViewModel.VbStatusText, Mode=OneWay}" Style="{StaticResource SecondaryCaptionStyle}" TextWrapping="Wrap" />
-                                        <Button Content="{x:Bind ViewModel.VbButtonText, Mode=OneWay}"
-                                                IsEnabled="{x:Bind ViewModel.CanInstallVb, Mode=OneWay}"
-                                                Click="InstallVbCable_Click" />
-                                        <HyperlinkButton Padding="0" Content="VB-Cable is donationware. Support VB-Audio"
-                                                         NavigateUri="https://shop.vb-audio.com/en/win-apps/11-vb-cable.html" />
-                                    </StackPanel>
-                                    <TextBlock Text="{x:Bind AboutText}" Style="{StaticResource SecondaryCaptionStyle}" TextWrapping="Wrap" />
+                                <StackPanel Width="420" Spacing="4">
+                                    <TextBlock Text="Settings" Margin="0,0,0,8" Style="{StaticResource SubtitleTextBlockStyle}" />
+
+                                    <tk:SettingsCard Header="Listen plays on" Description="Where the headphones button plays a mix">
+                                        <tk:SettingsCard.HeaderIcon>
+                                            <FontIcon Glyph="&#xE7F6;" />
+                                        </tk:SettingsCard.HeaderIcon>
+                                        <ComboBox Width="170"
+                                                  ItemsSource="{x:Bind ViewModel.OutputDevices}"
+                                                  SelectedItem="{x:Bind ViewModel.MonitorDevice, Mode=TwoWay}" />
+                                    </tk:SettingsCard>
+
+                                    <tk:SettingsCard Header="Close to notification area" Description="Keep running when the window is closed">
+                                        <tk:SettingsCard.HeaderIcon>
+                                            <FontIcon Glyph="&#xE8A7;" />
+                                        </tk:SettingsCard.HeaderIcon>
+                                        <ToggleSwitch IsOn="{x:Bind ViewModel.CloseToTray, Mode=TwoWay}" />
+                                    </tk:SettingsCard>
+
+                                    <tk:SettingsCard Header="Start with Windows">
+                                        <tk:SettingsCard.HeaderIcon>
+                                            <FontIcon Glyph="&#xE7E8;" />
+                                        </tk:SettingsCard.HeaderIcon>
+                                        <ToggleSwitch IsOn="{x:Bind ViewModel.StartWithWindows, Mode=TwoWay}" />
+                                    </tk:SettingsCard>
+
+                                    <tk:SettingsExpander Header="VB-Cable" Description="{x:Bind ViewModel.VbStatusText, Mode=OneWay}">
+                                        <tk:SettingsExpander.HeaderIcon>
+                                            <FontIcon Glyph="&#xE720;" />
+                                        </tk:SettingsExpander.HeaderIcon>
+                                        <tk:SettingsExpander.Items>
+                                            <tk:SettingsCard Header="Install, repair or remove">
+                                                <Button Content="{x:Bind ViewModel.VbButtonText, Mode=OneWay}"
+                                                        Command="{x:Bind ViewModel.InstallVbCableCommand}" />
+                                            </tk:SettingsCard>
+                                            <tk:SettingsCard Header="VB-Cable is donationware">
+                                                <HyperlinkButton Content="Support VB-Audio"
+                                                                 NavigateUri="https://shop.vb-audio.com/en/win-apps/11-vb-cable.html" />
+                                            </tk:SettingsCard>
+                                        </tk:SettingsExpander.Items>
+                                    </tk:SettingsExpander>
+
+                                    <TextBlock Text="{x:Bind AboutText}" Margin="0,8,0,0" Style="{StaticResource SecondaryCaptionStyle}" TextWrapping="Wrap" />
                                 </StackPanel>
                             </Flyout>
                         </Button.Flyout>
@@ -161,10 +186,10 @@
                                                     <FontIcon Glyph="&#xE712;" FontSize="14" />
                                                     <Button.Flyout>
                                                         <MenuFlyout Placement="BottomEdgeAlignedRight">
-                                                            <MenuFlyoutItem Text="Rename" Click="{x:Bind RequestRename}" />
-                                                            <MenuFlyoutItem Text="Change source" Click="{x:Bind RequestEdit}" />
+                                                            <MenuFlyoutItem Text="Rename" Command="{x:Bind RequestRenameCommand}" />
+                                                            <MenuFlyoutItem Text="Change source" Command="{x:Bind RequestEditCommand}" />
                                                             <MenuFlyoutSeparator />
-                                                            <MenuFlyoutItem Text="Remove" Click="{x:Bind Remove}" />
+                                                            <MenuFlyoutItem Text="Remove" Command="{x:Bind RemoveCommand}" />
                                                         </MenuFlyout>
                                                     </Button.Flyout>
                                                 </Button>
@@ -244,9 +269,9 @@
                                                     <FontIcon Glyph="&#xE712;" FontSize="14" />
                                                     <Button.Flyout>
                                                         <MenuFlyout Placement="BottomEdgeAlignedRight">
-                                                            <MenuFlyoutItem Text="Rename" Click="{x:Bind RequestRename}" />
+                                                            <MenuFlyoutItem Text="Rename" Command="{x:Bind RequestRenameCommand}" />
                                                             <MenuFlyoutSeparator />
-                                                            <MenuFlyoutItem Text="Remove" Click="{x:Bind Remove}" />
+                                                            <MenuFlyoutItem Text="Remove" Command="{x:Bind RemoveCommand}" />
                                                         </MenuFlyout>
                                                     </Button.Flyout>
                                                 </Button>
@@ -276,21 +301,6 @@
                                                                  BarBrush="{ThemeResource AccentFillColorDefaultBrush}"
                                                                  TrackBrush="{ThemeResource ControlStrongFillColorDisabledBrush}" />
 
-                                            <Grid ColumnSpacing="12">
-                                                <Grid.ColumnDefinitions>
-                                                    <ColumnDefinition Width="*" />
-                                                    <ColumnDefinition Width="Auto" />
-                                                </Grid.ColumnDefinitions>
-                                                <StackPanel VerticalAlignment="Center">
-                                                    <TextBlock Text="Mono for voice chat" Style="{StaticResource BodyTextBlockStyle}" />
-                                                    <TextBlock Text="Turn on if music or effects go missing in browser or voice apps."
-                                                               Style="{StaticResource SecondaryCaptionStyle}" TextWrapping="Wrap" />
-                                                </StackPanel>
-                                                <ToggleSwitch Grid.Column="1" MinWidth="0" OnContent="" OffContent="" VerticalAlignment="Center"
-                                                              IsOn="{x:Bind MonoSafe, Mode=TwoWay}"
-                                                              AutomationProperties.Name="Mono for voice chat" />
-                                            </Grid>
-
                                             <Rectangle Height="1" Margin="0,2,0,0" Fill="{ThemeResource DividerStrokeColorDefaultBrush}" />
 
                                             <ItemsControl ItemsSource="{x:Bind Routes}">
@@ -311,7 +321,7 @@
                                                                     AutomationProperties.Name="Level in this mix" />
                                                             <TextBlock Grid.Column="3" Text="{x:Bind GainText, Mode=OneWay}" TextAlignment="Right"
                                                                        VerticalAlignment="Center" Style="{StaticResource SecondaryCaptionStyle}" />
-                                                            <Button Grid.Column="4" Style="{StaticResource IconButtonStyle}" Click="{x:Bind Remove}"
+                                                            <Button Grid.Column="4" Style="{StaticResource IconButtonStyle}" Command="{x:Bind RemoveCommand}"
                                                                     ToolTipService.ToolTip="Remove from this mix" AutomationProperties.Name="Remove from this mix">
                                                                 <FontIcon Glyph="&#xE711;" FontSize="12" />
                                                             </Button>

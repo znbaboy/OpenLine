@@ -1,3 +1,4 @@
+using CommunityToolkit.WinUI.Controls;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using OpenLine.Core.Audio;
@@ -10,7 +11,7 @@ namespace OpenLine.Dialogs;
 public sealed class InputEditorDialog : ContentDialog
 {
     private readonly MainViewModel _vm;
-    private readonly RadioButtons _kind;
+    private readonly Segmented _kind;
     private readonly ComboBox _devices;
     private readonly ComboBox _apps;
     private readonly Grid _appRow;
@@ -30,10 +31,14 @@ public sealed class InputEditorDialog : ContentDialog
         CloseButtonText = "Cancel";
         DefaultButton = ContentDialogButton.Primary;
 
-        _kind = new RadioButtons { Header = "Source" };
-        _kind.Items.Add("Microphone or line in");
-        _kind.Items.Add("An app");
-        _kind.Items.Add("All desktop audio");
+        // Order matches InputKind: Device, App, System.
+        _kind = new Segmented { HorizontalAlignment = HorizontalAlignment.Stretch };
+        _kind.Items.Add(new SegmentedItem { Content = "Microphone", Icon = new FontIcon { Glyph = "\uE720" } });
+        _kind.Items.Add(new SegmentedItem { Content = "App", Icon = new FontIcon { Glyph = "\uECAA" } });
+        _kind.Items.Add(new SegmentedItem { Content = "Desktop audio", Icon = new FontIcon { Glyph = "\uE7F5" } });
+        var kindPanel = new StackPanel { Spacing = 8 };
+        kindPanel.Children.Add(new TextBlock { Text = "Source" });
+        kindPanel.Children.Add(_kind);
 
         _devices = new ComboBox { Header = "Device", HorizontalAlignment = HorizontalAlignment.Stretch, ItemsSource = vm.CaptureDevices };
 
@@ -79,7 +84,7 @@ public sealed class InputEditorDialog : ContentDialog
         };
 
         var panel = new StackPanel { Spacing = 16, Width = 380 };
-        panel.Children.Add(_kind);
+        panel.Children.Add(kindPanel);
         panel.Children.Add(_devices);
         panel.Children.Add(_appRow);
         panel.Children.Add(_systemHint);
