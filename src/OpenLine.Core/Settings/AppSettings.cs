@@ -49,8 +49,6 @@ public sealed class MixConfig
     public string? DeviceId { get; set; }
     public double Volume { get; set; } = 1.0;
     public bool Muted { get; set; }
-    /// <summary>Phase-rotated mono, for voice apps that downmix the mic.</summary>
-    public bool MonoSafe { get; set; }
     public List<RouteConfig> Routes { get; set; } = [];
 }
 

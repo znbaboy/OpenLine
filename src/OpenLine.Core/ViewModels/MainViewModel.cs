@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 using NAudio.CoreAudioApi;
 using OpenLine.Core.Audio;
 using OpenLine.Core.Settings;
@@ -10,7 +11,7 @@ namespace OpenLine.Core.ViewModels;
 
 public enum VbCableState { Unknown, Missing, Disabled, Downloading, WaitingForSetup, RestartRequired, Ready }
 
-public sealed class MainViewModel : ObservableObject, IAsyncDisposable
+public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable
 {
     private static readonly TimeSpan SaveDelay = TimeSpan.FromMilliseconds(600);
     private static readonly TimeSpan AppPollInterval = TimeSpan.FromSeconds(3);
@@ -25,12 +26,9 @@ public sealed class MainViewModel : ObservableObject, IAsyncDisposable
     private DateTime _nextAppPoll = DateTime.MinValue;
     private bool _defaultCaptureChanged, _defaultRenderChanged;
     private bool _initialized;
-    private VbCableState _vbCable;
-    private double _vbProgress;
     private bool _showVbBanner = true;
-    private string? _errorMessage;
     private DeviceOption? _monitorDevice;
-    private bool _closeToTray = true;
+    private bool _loadingSettings;
 
     public MainViewModel(AudioEngine engine, SettingsStore store, IUiDispatcher ui)
     {
@@ -40,6 +38,9 @@ public sealed class MainViewModel : ObservableObject, IAsyncDisposable
         _engine.DeviceChanged += change => _ui.Post(() => OnDeviceChanged(change));
         Inputs.CollectionChanged += (_, _) => OnPropertyChanged(nameof(HasNoInputs));
         Mixes.CollectionChanged += (_, _) => OnPropertyChanged(nameof(HasNoMixes));
+        _loadingSettings = true;
+        CloseToTray = true;
+        _loadingSettings = false;
     }
 
     public ObservableCollection<InputViewModel> Inputs { get; } = [];
@@ -80,17 +81,13 @@ public sealed class MainViewModel : ObservableObject, IAsyncDisposable
         }
     }
 
-    public bool CloseToTray
+    [ObservableProperty]
+    public partial bool CloseToTray { get; set; }
+
+    partial void OnCloseToTrayChanged(bool value)
     {
-        get => _closeToTray;
-        set
-        {
-            if (SetProperty(ref _closeToTray, value))
-            {
-                _settings.CloseToTray = value;
-                MarkDirty();
-            }
-        }
+        _settings.CloseToTray = value;
+        if (!_loadingSettings) MarkDirty();
     }
 
     public bool StartWithWindows
@@ -104,51 +101,34 @@ public sealed class MainViewModel : ObservableObject, IAsyncDisposable
         }
     }
 
-    public string? ErrorMessage
-    {
-        get => _errorMessage;
-        set
-        {
-            if (SetProperty(ref _errorMessage, value)) OnPropertyChanged(nameof(HasError));
-        }
-    }
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasError))]
+    public partial string? ErrorMessage { get; set; }
 
     public bool HasError
     {
-        get => !string.IsNullOrEmpty(_errorMessage);
+        get => !string.IsNullOrEmpty(ErrorMessage);
         set { if (!value) ErrorMessage = null; }
     }
 
     // ---------- VB-Cable ----------
 
-    public VbCableState VbCable
-    {
-        get => _vbCable;
-        private set
-        {
-            if (!SetProperty(ref _vbCable, value)) return;
-            OnPropertyChanged(nameof(ShowVbMissing));
-            OnPropertyChanged(nameof(ShowVbBusy));
-            OnPropertyChanged(nameof(ShowVbRestart));
-            OnPropertyChanged(nameof(VbStatusText));
-            OnPropertyChanged(nameof(VbButtonText));
-            OnPropertyChanged(nameof(CanInstallVb));
-            OnPropertyChanged(nameof(VbIndeterminate));
-            OnPropertyChanged(nameof(VbBusyText));
-            OnPropertyChanged(nameof(VbMissingTitle));
-            OnPropertyChanged(nameof(VbMissingMessage));
-            OnPropertyChanged(nameof(VbMissingAction));
-        }
-    }
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShowVbMissing), nameof(ShowVbBusy), nameof(ShowVbRestart), nameof(VbStatusText),
+        nameof(VbButtonText), nameof(CanInstallVb), nameof(VbIndeterminate), nameof(VbBusyText),
+        nameof(VbMissingTitle), nameof(VbMissingMessage), nameof(VbMissingAction))]
+    [NotifyCanExecuteChangedFor(nameof(InstallVbCableCommand), nameof(VbBannerActionCommand))]
+    public partial VbCableState VbCable { get; private set; }
 
-    public bool VbIndeterminate => _vbCable == VbCableState.WaitingForSetup || _vbProgress <= 0;
+    public bool VbIndeterminate => VbCable == VbCableState.WaitingForSetup || VbProgress <= 0;
 
-    public string VbMissingAction => _vbCable == VbCableState.Disabled ? "Open Sound settings" : "Install VB-Cable";
+    public string VbMissingAction => VbCable == VbCableState.Disabled ? "Open Sound settings" : "Install VB-Cable";
 
     /// <summary>Banner action: install, or open Sound settings when the cable is just turned off.</summary>
+    [RelayCommand(CanExecute = nameof(CanInstallVb))]
     public async Task VbBannerActionAsync()
     {
-        if (_vbCable == VbCableState.Disabled)
+        if (VbCable == VbCableState.Disabled)
         {
             try { System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("ms-settings:sound") { UseShellExecute = true }); }
             catch (Exception ex) { ErrorMessage = $"Couldn't open Sound settings: {ex.Message}"; }
@@ -159,7 +139,7 @@ public sealed class MainViewModel : ObservableObject, IAsyncDisposable
 
     public bool ShowVbMissing
     {
-        get => _showVbBanner && _vbCable is VbCableState.Missing or VbCableState.Disabled;
+        get => _showVbBanner && VbCable is VbCableState.Missing or VbCableState.Disabled;
         set
         {
             if (!value) _showVbBanner = false;
@@ -167,36 +147,31 @@ public sealed class MainViewModel : ObservableObject, IAsyncDisposable
         }
     }
 
-    public bool ShowVbBusy => _vbCable is VbCableState.Downloading or VbCableState.WaitingForSetup;
+    public bool ShowVbBusy => VbCable is VbCableState.Downloading or VbCableState.WaitingForSetup;
 
     public bool ShowVbRestart
     {
-        get => _vbCable == VbCableState.RestartRequired;
+        get => VbCable == VbCableState.RestartRequired;
         set { /* closable InfoBar: state stays until devices change */ }
     }
 
     public bool CanInstallVb => !ShowVbBusy;
 
-    public double VbProgress
-    {
-        get => _vbProgress;
-        private set
-        {
-            if (SetProperty(ref _vbProgress, value)) OnPropertyChanged(nameof(VbIndeterminate));
-        }
-    }
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(VbIndeterminate))]
+    public partial double VbProgress { get; private set; }
 
-    public string VbBusyText => _vbCable == VbCableState.Downloading
+    public string VbBusyText => VbCable == VbCableState.Downloading
         ? "Downloading VB-Cable from vb-audio.com…"
         : "Finish in the VB-Cable window: click Install Driver, then close it.";
 
-    public string VbMissingTitle => _vbCable == VbCableState.Disabled ? "VB-Cable is turned off" : "VB-Cable isn't installed";
+    public string VbMissingTitle => VbCable == VbCableState.Disabled ? "VB-Cable is turned off" : "VB-Cable isn't installed";
 
-    public string VbMissingMessage => _vbCable == VbCableState.Disabled
+    public string VbMissingMessage => VbCable == VbCableState.Disabled
         ? "Turn on “CABLE Input” in Windows Sound settings (Sound > All sound devices) so the Stream mix can reach other apps."
         : "Install it so a mix can show up as a microphone (CABLE Output) in OBS, Discord, and other apps.";
 
-    public string VbStatusText => _vbCable switch
+    public string VbStatusText => VbCable switch
     {
         VbCableState.Ready => "Installed and ready. Apps can use “CABLE Output” as a microphone.",
         VbCableState.Disabled => "Installed, but turned off in Windows Sound settings.",
@@ -205,14 +180,15 @@ public sealed class MainViewModel : ObservableObject, IAsyncDisposable
         _ => "Not installed. It's needed to send a mix to other apps as a microphone.",
     };
 
-    public string VbButtonText => _vbCable is VbCableState.Ready or VbCableState.Disabled or VbCableState.RestartRequired
+    public string VbButtonText => VbCable is VbCableState.Ready or VbCableState.Disabled or VbCableState.RestartRequired
         ? "Repair or remove VB-Cable"
         : "Install VB-Cable";
 
+    [RelayCommand(CanExecute = nameof(CanInstallVb), AllowConcurrentExecutions = true)]
     public async Task InstallVbCableAsync()
     {
         if (ShowVbBusy) return;
-        var before = _vbCable;
+        var before = VbCable;
         try
         {
             ErrorMessage = null;
@@ -262,8 +238,9 @@ public sealed class MainViewModel : ObservableObject, IAsyncDisposable
         _initialized = true;
 
         _settings = _store.Load();
-        _closeToTray = _settings.CloseToTray;
-        OnPropertyChanged(nameof(CloseToTray));
+        _loadingSettings = true;
+        CloseToTray = _settings.CloseToTray;
+        _loadingSettings = false;
         try { Autostart.Repair(); } catch { }
 
         await RefreshDevicesAsync();
@@ -455,6 +432,7 @@ public sealed class MainViewModel : ObservableObject, IAsyncDisposable
 
     // ---------- Mixes & routes ----------
 
+    [RelayCommand]
     public async Task AddMixAsync()
     {
         var cfg = new MixConfig { Name = $"Mix {Mixes.Count + 1}", DeviceId = DeviceIds.Default };
@@ -626,7 +604,7 @@ public sealed class MainViewModel : ObservableObject, IAsyncDisposable
             {
                 VbCablePresence.Ready => VbCableState.Ready,
                 VbCablePresence.Disabled => VbCableState.Disabled,
-                _ => _vbCable == VbCableState.RestartRequired ? VbCableState.RestartRequired : VbCableState.Missing,
+                _ => VbCable == VbCableState.RestartRequired ? VbCableState.RestartRequired : VbCableState.Missing,
             };
         }
         catch (Exception)

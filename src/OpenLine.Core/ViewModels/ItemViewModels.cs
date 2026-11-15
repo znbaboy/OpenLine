@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 using OpenLine.Core.Audio;
 using OpenLine.Core.Settings;
 
@@ -36,24 +37,20 @@ public static class Palette
     public static string At(int index) => Colors[((index % Colors.Length) + Colors.Length) % Colors.Length];
 }
 
-public sealed class InputViewModel : ObservableObject
+public sealed partial class InputViewModel : ObservableObject
 {
     private readonly MainViewModel _main;
-    private string _name;
-    private double _gain;
-    private bool _muted;
-    private double _level;
-    private string? _status;
-    private bool _isWaiting;
+    private readonly bool _ready;
 
     internal InputViewModel(MainViewModel main, InputConfig config)
     {
         _main = main;
         Config = config;
-        _name = config.Name;
-        _gain = config.Gain;
-        _muted = config.Muted;
         Channel = new InputChannel(config.Id) { Gain = (float)config.Gain, Muted = config.Muted };
+        Name = config.Name;
+        Gain = config.Gain;
+        Muted = config.Muted;
+        _ready = true;
     }
 
     internal InputConfig Config { get; private set; }
@@ -68,22 +65,18 @@ public sealed class InputViewModel : ObservableObject
 
     public string Glyph => Config.Kind switch
     {
-        InputKind.Device => "\uE720", // Microphone
-        InputKind.App => "\uECAA",    // App
-        _ => "\uE7F5",                // Speakers
+        InputKind.Device => "", // Microphone
+        InputKind.App => "",    // App
+        _ => "",                // Speakers
     };
 
-    public string Name
+    [ObservableProperty]
+    public partial string Name { get; set; }
+
+    partial void OnNameChanged(string value)
     {
-        get => _name;
-        set
-        {
-            if (SetProperty(ref _name, value))
-            {
-                Config.Name = value;
-                _main.MarkDirty();
-            }
-        }
+        Config.Name = value;
+        Dirty();
     }
 
     public string SourceLabel => Config.Kind switch
@@ -93,74 +86,63 @@ public sealed class InputViewModel : ObservableObject
         _ => "Everything you hear, except OpenLine",
     };
 
+    /// <summary>Linear gain, 0..2.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(GainPercent), nameof(GainText))]
+    public partial double Gain { get; private set; }
+
+    partial void OnGainChanged(double value)
+    {
+        Channel.Gain = (float)value;
+        Config.Gain = value;
+        Dirty();
+    }
+
     public double GainPercent
     {
-        get => Math.Round(_gain * 100);
-        set
-        {
-            var g = Math.Clamp(value / 100.0, 0, 2);
-            if (SetProperty(ref _gain, g))
-            {
-                Channel.Gain = (float)g;
-                Config.Gain = g;
-                OnPropertyChanged(nameof(GainText));
-                _main.MarkDirty();
-            }
-        }
+        get => Math.Round(Gain * 100);
+        set => Gain = Math.Clamp(value / 100.0, 0, 2);
     }
 
-    public string GainText => $"{Math.Round(_gain * 100)}%";
+    public string GainText => $"{Math.Round(Gain * 100)}%";
 
-    public bool Muted
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(MuteGlyph))]
+    public partial bool Muted { get; set; }
+
+    partial void OnMutedChanged(bool value)
     {
-        get => _muted;
-        set
-        {
-            if (SetProperty(ref _muted, value))
-            {
-                Channel.Muted = value;
-                Config.Muted = value;
-                OnPropertyChanged(nameof(MuteGlyph));
-                _main.MarkDirty();
-            }
-        }
+        Channel.Muted = value;
+        Config.Muted = value;
+        Dirty();
     }
 
-    public string MuteGlyph => _muted ? "\uE74F" : "\uE767";
+    public string MuteGlyph => Muted ? "" : "";
 
-    public double Level
-    {
-        get => _level;
-        private set => SetProperty(ref _level, value);
-    }
+    [ObservableProperty]
+    public partial double Level { get; private set; }
 
     /// <summary>Error or waiting message shown under the card. Null when healthy.</summary>
-    public string? Status
-    {
-        get => _status;
-        internal set
-        {
-            if (SetProperty(ref _status, value)) OnPropertyChanged(nameof(HasStatus));
-        }
-    }
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasStatus))]
+    public partial string? Status { get; internal set; }
 
-    public bool HasStatus => !string.IsNullOrEmpty(_status);
+    public bool HasStatus => !string.IsNullOrEmpty(Status);
 
-    internal bool IsWaiting
-    {
-        get => _isWaiting;
-        set => _isWaiting = value;
-    }
+    internal bool IsWaiting { get; set; }
 
     internal bool NeedsRestart { get; set; }
 
+    [RelayCommand]
     public void RequestEdit() => _main.RaiseEditInput(this);
 
+    [RelayCommand]
     public void RequestRename() => _main.RaiseRename(this);
 
+    [RelayCommand]
     public void Remove() => _main.RemoveInput(this);
 
-    internal void Tick() => Level = Meter.Next(_level, Channel.TakePeak());
+    internal void Tick() => Level = Meter.Next(Level, Channel.TakePeak());
 
     internal void ReplaceConfig(InputConfig config)
     {
@@ -169,8 +151,7 @@ public sealed class InputViewModel : ObservableObject
         config.Gain = Config.Gain;
         config.Muted = Config.Muted;
         Config = config;
-        _name = config.Name;
-        OnPropertyChanged(nameof(Name));
+        Name = config.Name;
         RefreshSource();
     }
 
@@ -180,69 +161,72 @@ public sealed class InputViewModel : ObservableObject
         OnPropertyChanged(nameof(Glyph));
         OnPropertyChanged(nameof(Kind));
     }
+
+    private void Dirty()
+    {
+        if (_ready) _main.MarkDirty();
+    }
 }
 
-public sealed class RouteViewModel : ObservableObject
+public sealed partial class RouteViewModel : ObservableObject
 {
     private readonly MainViewModel _main;
-    private double _gain;
+    private readonly bool _ready;
 
     internal RouteViewModel(MainViewModel main, InputViewModel input, MixViewModel mix, double gain)
     {
         _main = main;
         Input = input;
         Mix = mix;
-        _gain = gain;
+        Gain = gain;
+        _ready = true;
     }
 
     public InputViewModel Input { get; }
 
     public MixViewModel Mix { get; }
 
-    public double GainPercent
+    /// <summary>Linear gain of this input in this mix, 0..1.5.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(GainPercent), nameof(GainText))]
+    public partial double Gain { get; private set; }
+
+    partial void OnGainChanged(double value)
     {
-        get => Math.Round(_gain * 100);
-        set
-        {
-            var g = Math.Clamp(value / 100.0, 0, 1.5);
-            if (SetProperty(ref _gain, g))
-            {
-                Mix.Bus.SetRouteGain(Input.Channel, (float)g);
-                OnPropertyChanged(nameof(GainText));
-                _main.MarkDirty();
-            }
-        }
+        if (!_ready) return; // the bus is wired up by the caller on creation
+        Mix.Bus.SetRouteGain(Input.Channel, (float)value);
+        _main.MarkDirty();
     }
 
-    public double Gain => _gain;
+    public double GainPercent
+    {
+        get => Math.Round(Gain * 100);
+        set => Gain = Math.Clamp(value / 100.0, 0, 1.5);
+    }
 
-    public string GainText => $"{Math.Round(_gain * 100)}%";
+    public string GainText => $"{Math.Round(Gain * 100)}%";
 
+    [RelayCommand]
     public void Remove() => _main.Disconnect(this);
 }
 
-public sealed class MixViewModel : ObservableObject
+public sealed partial class MixViewModel : ObservableObject
 {
     private readonly MainViewModel _main;
-    private string _name;
-    private double _volume;
-    private bool _muted;
+    private readonly bool _ready;
     private bool _isListening;
-    private double _level;
-    private string? _status;
     private DeviceOption? _selectedDevice;
-    private bool _monoSafe;
 
     internal MixViewModel(MainViewModel main, MixConfig config)
     {
         _main = main;
         Config = config;
-        _name = config.Name;
-        _volume = config.Volume;
-        _muted = config.Muted;
-        _monoSafe = config.MonoSafe;
-        Bus = new MixBus(config.Id) { Volume = (float)config.Volume, Muted = config.Muted, MonoSafe = config.MonoSafe };
+        Bus = new MixBus(config.Id) { Volume = (float)config.Volume, Muted = config.Muted };
+        Name = config.Name;
+        Volume = config.Volume;
+        Muted = config.Muted;
         Routes.CollectionChanged += (_, _) => OnPropertyChanged(nameof(HasNoRoutes));
+        _ready = true;
     }
 
     internal MixConfig Config { get; }
@@ -257,20 +241,16 @@ public sealed class MixViewModel : ObservableObject
 
     public bool HasNoRoutes => Routes.Count == 0;
 
-    public string Name
+    [ObservableProperty]
+    public partial string Name { get; set; }
+
+    partial void OnNameChanged(string value)
     {
-        get => _name;
-        set
-        {
-            if (SetProperty(ref _name, value))
-            {
-                Config.Name = value;
-                _main.MarkDirty();
-            }
-        }
+        Config.Name = value;
+        Dirty();
     }
 
-    public string Glyph => _selectedDevice?.IsVbCable == true ? "\uE720" : "\uE7F5"; // virtual mic / speakers
+    public string Glyph => _selectedDevice?.IsVbCable == true ? "" : ""; // virtual mic / speakers
 
     /// <summary>
     /// Bound TwoWay to the device picker. Nulls are ignored: they only happen when the list
@@ -307,54 +287,38 @@ public sealed class MixViewModel : ObservableObject
         }
     }
 
+    /// <summary>Master volume, 0..1.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(VolumePercent), nameof(VolumeText))]
+    public partial double Volume { get; private set; }
+
+    partial void OnVolumeChanged(double value)
+    {
+        Bus.Volume = (float)value;
+        Config.Volume = value;
+        Dirty();
+    }
+
     public double VolumePercent
     {
-        get => Math.Round(_volume * 100);
-        set
-        {
-            var v = Math.Clamp(value / 100.0, 0, 1);
-            if (SetProperty(ref _volume, v))
-            {
-                Bus.Volume = (float)v;
-                Config.Volume = v;
-                OnPropertyChanged(nameof(VolumeText));
-                _main.MarkDirty();
-            }
-        }
+        get => Math.Round(Volume * 100);
+        set => Volume = Math.Clamp(value / 100.0, 0, 1);
     }
 
-    public string VolumeText => $"{Math.Round(_volume * 100)}%";
+    public string VolumeText => $"{Math.Round(Volume * 100)}%";
 
-    public bool Muted
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(MuteGlyph))]
+    public partial bool Muted { get; set; }
+
+    partial void OnMutedChanged(bool value)
     {
-        get => _muted;
-        set
-        {
-            if (SetProperty(ref _muted, value))
-            {
-                Bus.Muted = value;
-                Config.Muted = value;
-                OnPropertyChanged(nameof(MuteGlyph));
-                _main.MarkDirty();
-            }
-        }
+        Bus.Muted = value;
+        Config.Muted = value;
+        Dirty();
     }
 
-    public string MuteGlyph => _muted ? "\uE74F" : "\uE767";
-
-    public bool MonoSafe
-    {
-        get => _monoSafe;
-        set
-        {
-            if (SetProperty(ref _monoSafe, value))
-            {
-                Bus.MonoSafe = value;
-                Config.MonoSafe = value;
-                _main.MarkDirty();
-            }
-        }
-    }
+    public string MuteGlyph => Muted ? "" : "";
 
     public bool IsListening
     {
@@ -368,22 +332,14 @@ public sealed class MixViewModel : ObservableObject
 
     internal void SetListeningState(bool value) => SetProperty(ref _isListening, value, nameof(IsListening));
 
-    public double Level
-    {
-        get => _level;
-        private set => SetProperty(ref _level, value);
-    }
+    [ObservableProperty]
+    public partial double Level { get; private set; }
 
-    public string? Status
-    {
-        get => _status;
-        internal set
-        {
-            if (SetProperty(ref _status, value)) OnPropertyChanged(nameof(HasStatus));
-        }
-    }
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasStatus))]
+    public partial string? Status { get; internal set; }
 
-    public bool HasStatus => !string.IsNullOrEmpty(_status);
+    public bool HasStatus => !string.IsNullOrEmpty(Status);
 
     internal bool NeedsRestart { get; set; }
 
@@ -391,11 +347,13 @@ public sealed class MixViewModel : ObservableObject
 
     public void AddRoute(InputViewModel input) => _main.Connect(input, this);
 
+    [RelayCommand]
     public void RequestRename() => _main.RaiseRename(this);
 
+    [RelayCommand]
     public void Remove() => _main.RemoveMix(this);
 
-    internal void Tick() => Level = Meter.Next(_level, Bus.TakePeak());
+    internal void Tick() => Level = Meter.Next(Level, Bus.TakePeak());
 
     /// <summary>Re-select the picker entry after the device list changes.</summary>
     internal void SyncSelectedDevice()
@@ -405,5 +363,10 @@ public sealed class MixViewModel : ObservableObject
         OnPropertyChanged(nameof(SelectedDevice));
         OnPropertyChanged(nameof(Glyph));
         OnPropertyChanged(nameof(Hint));
+    }
+
+    private void Dirty()
+    {
+        if (_ready) _main.MarkDirty();
     }
 }

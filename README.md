@@ -10,7 +10,6 @@ Free, portable audio router for Windows, inspired by Logitech G MIXLINE. No inst
 - **Mixes:** output device, per-input levels, master, mute, meter
 - **Listen:** hear any mix on your headphones
 - **Virtual mic:** send a mix to VB-Cable; one-click setup from vb-audio.com
-- **Mono for voice chat:** keeps music/effects when apps sum stereo to mono
 - **Portable:** settings next to the exe; tray, start with Windows
 
 ## Download
