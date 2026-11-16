@@ -23,11 +23,12 @@
   const pcs = new Set();
   const worklets = [];
 
-  const md = navigator.mediaDevices;
-  if (md && typeof md.getUserMedia === "function") {
-    const original = md.getUserMedia.bind(md);
-    md.getUserMedia = async (constraints) => {
-      const stream = await original(
+  // Patch the prototype, not the instance, so saved references and .call() are covered too.
+  const mdProto = globalThis.MediaDevices && MediaDevices.prototype;
+  if (mdProto && typeof mdProto.getUserMedia === "function") {
+    const original = mdProto.getUserMedia;
+    mdProto.getUserMedia = async function (constraints) {
+      const stream = await original.call(this,
         constraints && constraints.audio ? { ...constraints, audio: raw(constraints.audio) } : constraints);
       for (const t of stream.getAudioTracks()) micTracks.add(t);
       return stream;

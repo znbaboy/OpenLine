@@ -1,19 +1,25 @@
 {
   "manifest_version": 3,
   "name": "OpenLine raw mic",
-  "version": "1.2",
+  "version": "1.3",
   "description": "Turns off echo cancellation, noise suppression and auto gain on listed sites, so music and effects sent through a virtual mic aren't filtered out.",
   "content_scripts": [
     {
       "matches": [
-        "https://uhmingle.com/*", "https://*.uhmingle.com/*",
-        "https://umingle.com/*", "https://*.umingle.com/*",
-        "https://uhmegle.com/*", "https://*.uhmegle.com/*"
+        "https://uhmingle.com/*",
+        "https://*.uhmingle.com/*",
+        "https://umingle.com/*",
+        "https://*.umingle.com/*",
+        "https://uhmegle.com/*",
+        "https://*.uhmegle.com/*"
       ],
-      "js": ["content.js"],
+      "js": [
+        "content.js"
+      ],
       "run_at": "document_start",
       "world": "MAIN",
-      "all_frames": true
+      "all_frames": true,
+      "match_origin_as_fallback": true
     }
   ]
 }
